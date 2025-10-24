@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "318925197009",
+    "project_id": "imm-radio-notifications",
+    "storage_bucket": "imm-radio-notifications.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:318925197009:android:c410be375bdd4d7c95fff0",
+        "android_client_info": {
+          "package_name": "com.intentionalmarriageministries.immconnect"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBfvk3e0kAsR2YvdqigS7v5W5cPYav1LO0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
