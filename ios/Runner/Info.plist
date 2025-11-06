@@ -47,5 +47,22 @@
 		<true/>
 		<key>UIStatusBarHidden</key>
 		<false/>
+
+		<!-- 🧩 Privacy usage descriptions required by Apple -->
+		<key>NSMicrophoneUsageDescription</key>
+		<string>IMM Connect uses the microphone when streaming or playing live audio content.</string>
+
+		<key>NSCameraUsageDescription</key>
+		<string>IMM Connect may use your camera when viewing or streaming live video.</string>
+
+		<key>NSPhotoLibraryUsageDescription</key>
+		<string>IMM Connect may access your photo library to display or upload images for your profile or streams.</string>
+
+		<!-- 🎵 Enable background audio playback -->
+		<key>UIBackgroundModes</key>
+		<array>
+			<string>audio</string>
+			<string>fetch</string>
+		</array>
 	</dict>
 </plist>
