@@ -64,5 +64,18 @@
 			<string>audio</string>
 			<string>fetch</string>
 		</array>
+
+		<key>NSMicrophoneUsageDescription</key>
+		<string>This app needs microphone access for audio playback and streaming features.</string>
+		<key>NSCameraUsageDescription</key>
+		<string>This app may use the camera for video playback.</string>
+		<key>NSPhotoLibraryUsageDescription</key>
+		<string>This app may access media for video playback.</string>
+		<key>UIBackgroundModes</key>
+		<array>
+		<string>audio</string>
+		<string>fetch</string>
+		</array>
+
 	</dict>
 </plist>

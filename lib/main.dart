@@ -1,32 +1,33 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+
 import 'theme_provider.dart';
+import 'screens/splash_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/document_screen.dart';
-import 'screens/settings_screen.dart';
-import 'screens/splash_screen.dart';
-import 'dart:convert';
 import 'screens/books_screen.dart';
+import 'screens/settings_screen.dart';
+import 'firebase_options.dart'; // ✅ make sure this exists
 
-
-/// 🔑 Global navigator key (used to open pages from notification tap)
+// 🌐 Global navigation key
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
-/// 📱 Local notifications plugin
+// 🔔 Local notifications plugin
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
     FlutterLocalNotificationsPlugin();
 
-/// 🔔 Background notification handler
+// 🔕 Background message handler
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  await Firebase.initializeApp();
-  await showNotification(message);
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  await _showNotification(message);
 }
 
-/// 🔔 Display notification
-Future<void> showNotification(RemoteMessage message) async {
+// 📬 Show a notification
+Future<void> _showNotification(RemoteMessage message) async {
   final notification = message.notification;
   final data = message.data;
 
@@ -36,45 +37,39 @@ Future<void> showNotification(RemoteMessage message) async {
     importance: Importance.max,
     priority: Priority.high,
   );
-
   const details = NotificationDetails(android: androidDetails);
 
   await flutterLocalNotificationsPlugin.show(
     notification.hashCode,
-    notification?.title ?? data['reading_title'] ?? 'Daily Reading',
-    notification?.body ?? data['reading_body'] ?? 'Tap to read',
+    notification?.title ?? data['title'] ?? 'IMM Connect',
+    notification?.body ?? data['body'] ?? 'Tap to open',
     details,
-    payload: jsonEncode(data), // ✅ Encoded as JSON (safe to keep)
+    payload: jsonEncode(data),
   );
 }
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
-  // 🔔 Setup local notifications
+  // Initialize local notifications
   const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
   const initSettings = InitializationSettings(android: androidInit);
-  await flutterLocalNotificationsPlugin.initialize(
-    initSettings,
-    // 🔕 Removed navigation to deleted MessageDetailScreen
-    onDidReceiveNotificationResponse: (NotificationResponse response) async {
-      // Handle tap if needed (optional: show a snackbar or do nothing)
-    },
-  );
+  await flutterLocalNotificationsPlugin.initialize(initSettings,
+      onDidReceiveNotificationResponse: (response) {
+    final payload = response.payload;
+    if (payload != null) {
+      final data = jsonDecode(payload);
+      navigatorKey.currentState?.pushNamed('/home', arguments: data);
+    }
+  });
 
-  final messaging = FirebaseMessaging.instance;
+  // 🔔 Firebase Messaging setup
+  FirebaseMessaging messaging = FirebaseMessaging.instance;
   await messaging.requestPermission();
   await messaging.subscribeToTopic('daily_readings');
 
-  // 🔑 Print FCM token
-  final token = await messaging.getToken();
-  debugPrint('🔥 FCM Token: $token');
-
-  // 🔔 Handle foreground notifications
-  FirebaseMessaging.onMessage.listen(showNotification);
-
-  // 🔔 Handle background messages
+  FirebaseMessaging.onMessage.listen(_showNotification);
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
   runApp(
@@ -83,8 +78,6 @@ Future<void> main() async {
       child: const ImmApp(),
     ),
   );
-
-  // 🚀 Removed logic for MessageDetailScreen navigation on terminated state
 }
 
 class ImmApp extends StatelessWidget {
@@ -93,7 +86,6 @@ class ImmApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
-
     return MaterialApp(
       navigatorKey: navigatorKey,
       title: 'IMM Connect',
@@ -101,6 +93,7 @@ class ImmApp extends StatelessWidget {
       theme: themeProvider.lightTheme,
       darkTheme: themeProvider.darkTheme,
       themeMode: themeProvider.themeMode,
+      initialRoute: '/',
       routes: {
         '/': (context) => const SplashScreen(),
         '/home': (context) => const MainNavigation(),
@@ -137,11 +130,7 @@ class _MainNavigationState extends State<MainNavigation> {
     ];
   }
 
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-  }
+  void _onItemTapped(int index) => setState(() => _selectedIndex = index);
 
   @override
   Widget build(BuildContext context) {
@@ -155,12 +144,13 @@ class _MainNavigationState extends State<MainNavigation> {
               onTap: _onItemTapped,
               selectedItemColor: Colors.deepPurple,
               unselectedItemColor: Colors.grey,
-              items: [
-                
+              items: const [
                 BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-                BottomNavigationBarItem(icon: Icon(Icons.library_books), label: 'Reading Material'),
+                BottomNavigationBarItem(
+                    icon: Icon(Icons.library_books), label: 'Reading Material'),
                 BottomNavigationBarItem(icon: Icon(Icons.book), label: 'Books'),
-                BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Settings'),
+                BottomNavigationBarItem(
+                    icon: Icon(Icons.settings), label: 'Settings'),
               ],
             ),
     );
