@@ -11,7 +11,7 @@ import 'screens/home_screen.dart';
 import 'screens/document_screen.dart';
 import 'screens/books_screen.dart';
 import 'screens/settings_screen.dart';
-import 'firebase_options.dart'; // ✅ make sure this exists
+import 'firebase_options.dart';
 
 // 🌐 Global navigation key
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -20,13 +20,17 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
     FlutterLocalNotificationsPlugin();
 
-// 🔕 Background message handler
+// =======================================
+//  🔕 Background message handler (iOS-safe)
+// =======================================
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   await _showNotification(message);
 }
 
-// 📬 Show a notification
+// =======================================
+//  🔔 Show notification (iOS + Android)
+// =======================================
 Future<void> _showNotification(RemoteMessage message) async {
   final notification = message.notification;
   final data = message.data;
@@ -37,6 +41,7 @@ Future<void> _showNotification(RemoteMessage message) async {
     importance: Importance.max,
     priority: Priority.high,
   );
+
   const details = NotificationDetails(android: androidDetails);
 
   await flutterLocalNotificationsPlugin.show(
@@ -48,38 +53,89 @@ Future<void> _showNotification(RemoteMessage message) async {
   );
 }
 
+// =======================================
+//          🔥 MAIN (IOS-STABLE)
+// =======================================
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
-  // Initialize local notifications
-  const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
-  const initSettings = InitializationSettings(android: androidInit);
-  await flutterLocalNotificationsPlugin.initialize(initSettings,
-      onDidReceiveNotificationResponse: (response) {
-    final payload = response.payload;
-    if (payload != null) {
-      final data = jsonDecode(payload);
-      navigatorKey.currentState?.pushNamed('/home', arguments: data);
-    }
-  });
+  // -----------------------------
+  // 1️⃣ Firebase Initialization
+  // -----------------------------
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    print("🔥 Firebase initialized successfully");
+  } catch (e, s) {
+    print("❌ Firebase init FAILED: $e");
+    print(s);
+  }
 
-  // 🔔 Firebase Messaging setup
+  // -----------------------------
+  // 2️⃣ Register background handler
+  // -----------------------------
+  FirebaseMessaging.onBackgroundMessage(
+    _firebaseMessagingBackgroundHandler,
+  );
+
+  // -----------------------------
+  // 3️⃣ Request notification permissions (iOS REQUIRED)
+  // -----------------------------
   FirebaseMessaging messaging = FirebaseMessaging.instance;
-  await messaging.requestPermission();
+
+  await messaging.requestPermission(
+    alert: true,
+    badge: true,
+    sound: true,
+    announcement: true,
+    criticalAlert: true,
+    provisional: false,
+  );
+
   await messaging.subscribeToTopic('daily_readings');
 
-  FirebaseMessaging.onMessage.listen(_showNotification);
-  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-
+  // -----------------------------
+  // 4️⃣ SAFE Notification Initialization (AFTER runApp)
+  // -----------------------------
   runApp(
     ChangeNotifierProvider(
       create: (_) => ThemeProvider(),
       child: const ImmApp(),
     ),
   );
+
+  // Post-frame init (fixes iOS crash during init)
+  WidgetsBinding.instance.addPostFrameCallback((_) async {
+    const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
+
+    const initSettings = InitializationSettings(
+      android: androidInit,
+    );
+
+    await flutterLocalNotificationsPlugin.initialize(
+      initSettings,
+      onDidReceiveNotificationResponse: (response) {
+        final payload = response.payload;
+        if (payload != null) {
+          final data = jsonDecode(payload);
+          navigatorKey.currentState?.pushNamed('/home', arguments: data);
+        }
+      },
+    );
+
+    print("🔔 Local notifications initialized safely");
+  });
+
+  // -----------------------------
+  // 5️⃣ Foreground message listener
+  // -----------------------------
+  FirebaseMessaging.onMessage.listen(_showNotification);
 }
 
+// =======================================
+//          APP ROOT WIDGET
+// =======================================
 class ImmApp extends StatelessWidget {
   const ImmApp({super.key});
 
@@ -102,6 +158,9 @@ class ImmApp extends StatelessWidget {
   }
 }
 
+// =======================================
+//        NAVIGATION + BOTTOM BAR
+// =======================================
 class MainNavigation extends StatefulWidget {
   const MainNavigation({super.key});
 
